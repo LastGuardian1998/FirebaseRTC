@@ -38,6 +38,18 @@ async function createRoom() {
   registerPeerConnectionListeners();
 
   // Add code for creating a room here
+  const offer = await peerConnection.createOffer();
+await peerConnection.setLocalDescription(offer);
+
+const roomWithOffer = {
+    offer: {
+        type: offer.type,
+        sdp: offer.sdp
+    }
+}
+const roomRef = await db.collection('rooms').add(roomWithOffer);
+const roomId = roomRef.id;
+document.querySelector('#currentRoom').innerText = `Current room is ${roomId} - You are the caller!`
   
   // Code for creating room above
   
@@ -50,6 +62,26 @@ async function createRoom() {
   // Code for creating a room above
 
   // Code for collecting ICE candidates below
+  async function collectIceCandidates(roomRef, peerConnection,
+    localName, remoteName) {
+const candidatesCollection = roomRef.collection(localName);
+
+peerConnection.addEventListener('icecandidate', event => {
+if (event.candidate) {
+const json = event.candidate.toJSON();
+candidatesCollection.add(json);
+}
+});
+
+roomRef.collection(remoteName).onSnapshot(snapshot => {
+snapshot.docChanges().forEach(change => {
+if (change.type === "added") {
+const candidate = new RTCIceCandidate(change.doc.data());
+peerConneciton.addIceCandidate(candidate);
+}
+});
+})
+}
 
   // Code for collecting ICE candidates above
 
